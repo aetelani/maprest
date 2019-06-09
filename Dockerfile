@@ -1,6 +1,6 @@
 FROM golang:alpine
 
-WORKDIR /go/src/github.com/aetelani/maprest
+WORKDIR /go
 
 RUN apk add git
 
@@ -8,4 +8,4 @@ RUN apk add git
 RUN go get -d -v github.com/aetelani/maprest
 RUN go install -v ./...
 
-CMD ["./maprest"]
+CMD ["maprest"]
