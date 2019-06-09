@@ -1,4 +1,4 @@
-FROM golang:latest-alpine
+FROM golang:alpine
 
 WORKDIR /go/src/github.com/aetelani/maprest
 
