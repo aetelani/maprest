@@ -11,38 +11,50 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type CountryId string
+type ContinentId string
+type CityId string
+
 type Continent struct {
-	Name string `json:"name,omitempty"`
+	Name ContinentId `json:"name,omitempty"`
 }
 
 type Country struct {
-	Name      string     `json:"name,omitempty"`
+	Name      CountryId  `json:"name,omitempty"`
 	Continent *Continent `json:"continent,omitempty"`
 }
 
+func (country Country) getContinent() Continent { return db.getContinent(country.Continent.Name) }
+
 type City struct {
-	Name    string   `json:"name,omitempty"`
+	Name    CityId   `json:"name,omitempty"`
 	Country *Country `json:"country,omitempty"`
 }
 
+func (city City) getCountry() Country { return db.getCountry(city.Country.Name) }
+func (city City) getContinent() Continent {
+	country := city.getCountry()
+	return country.getContinent()
+}
+
 type DataBaseI interface {
-	getCity(string) City
-	getContinent(string) Continent
-	getCountry(string) Country
+	getCity(CityId) City
+	getContinent(ContinentId) Continent
+	getCountry(CountryId) Country
 	getCities() *Cities
 	getContinents() *Continents
 	getCountries() *Countries
 	addCity(City)
 	addContinent(Continent)
 	addCountry(Country)
-	deleteCity(string)
-	deleteContinent(string)
-	deleteCountry(string)
+	deleteCity(CityId)
+	deleteContinent(ContinentId)
+	deleteCountry(CountryId)
 }
 
-type Cities map[string]City
-type Continents map[string]Continent
-type Countries map[string]Country
+type Cities map[CityId]City
+type Continents map[ContinentId]Continent
+type Countries map[CountryId]Country
 
 type MemDataBaseImp struct {
 	info       string `default:"InMemory DataBase implementation"`
@@ -51,19 +63,19 @@ type MemDataBaseImp struct {
 	countries  Countries
 }
 
-func (db MemDataBaseImp) getCity(name string) City           { return db.cities[name] }
-func (db MemDataBaseImp) getContinent(name string) Continent { return db.continents[name] }
-func (db MemDataBaseImp) getCountry(name string) Country     { return db.countries[name] }
-func (db *MemDataBaseImp) getCities() *Cities                { return &db.cities }
-func (db *MemDataBaseImp) getContinents() *Continents        { return &db.continents }
-func (db *MemDataBaseImp) getCountries() *Countries          { return &db.countries }
+func (db MemDataBaseImp) getCity(name CityId) City                { return db.cities[name] }
+func (db MemDataBaseImp) getContinent(name ContinentId) Continent { return db.continents[name] }
+func (db MemDataBaseImp) getCountry(name CountryId) Country       { return db.countries[name] }
+func (db *MemDataBaseImp) getCities() *Cities                     { return &db.cities }
+func (db *MemDataBaseImp) getContinents() *Continents             { return &db.continents }
+func (db *MemDataBaseImp) getCountries() *Countries               { return &db.countries }
 
-func (db *MemDataBaseImp) addCity(city City)                { db.cities[city.Name] = city }
-func (db *MemDataBaseImp) addContinent(continent Continent) { db.continents[continent.Name] = continent }
-func (db *MemDataBaseImp) addCountry(country Country)       { db.countries[country.Name] = country }
-func (db *MemDataBaseImp) deleteCity(city string)           { delete(db.cities, city) }
-func (db *MemDataBaseImp) deleteContinent(continent string) { delete(db.continents, continent) }
-func (db *MemDataBaseImp) deleteCountry(country string)     { delete(db.countries, country) }
+func (db *MemDataBaseImp) addCity(city City)                     { db.cities[city.Name] = city }
+func (db *MemDataBaseImp) addContinent(continent Continent)      { db.continents[continent.Name] = continent }
+func (db *MemDataBaseImp) addCountry(country Country)            { db.countries[country.Name] = country }
+func (db *MemDataBaseImp) deleteCity(city CityId)                { delete(db.cities, city) }
+func (db *MemDataBaseImp) deleteContinent(continent ContinentId) { delete(db.continents, continent) }
+func (db *MemDataBaseImp) deleteCountry(country CountryId)       { delete(db.countries, country) }
 
 var db DataBaseI
 
@@ -80,8 +92,8 @@ func getCity(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
-	name := params[NAMEID]
-	city := db.getCity(name)
+	id := CityId(params[NAMEID])
+	city := db.getCity(id)
 	err := json.NewEncoder(w).Encode(city)
 	log.Println(err)
 }
@@ -96,7 +108,7 @@ func getCities(w http.ResponseWriter, r *http.Request) {
 func deleteCity(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	params := mux.Vars(req)
-	name := params[NAMEID]
+	name := CityId(params[NAMEID])
 	db.deleteCity(name)
 }
 func createCountry(w http.ResponseWriter, req *http.Request) {
@@ -110,16 +122,16 @@ func getCountry(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
-	name := params[NAMEID]
-	city := db.getCountry(name)
+	id := CountryId(params[NAMEID])
+	city := db.getCountry(id)
 	err := json.NewEncoder(w).Encode(city)
 	log.Println(err)
 }
 func deleteCountry(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	params := mux.Vars(req)
-	name := params[NAMEID]
-	db.deleteCountry(name)
+	id := CountryId(params[NAMEID])
+	db.deleteCountry(id)
 }
 func createContinent(w http.ResponseWriter, req *http.Request) {
 	var continent Continent
@@ -132,16 +144,16 @@ func getContinent(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
-	name := params[NAMEID]
-	continent := db.getContinent(name)
+	id := ContinentId(params[NAMEID])
+	continent := db.getContinent(id)
 	err := json.NewEncoder(w).Encode(continent)
 	log.Println(err)
 }
 func deleteContinent(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	params := mux.Vars(req)
-	name := params[NAMEID]
-	db.deleteContinent(name)
+	id := ContinentId(params[NAMEID])
+	db.deleteContinent(id)
 }
 func searchCities(w http.ResponseWriter, req *http.Request) {
 	results := make(Cities)
@@ -158,12 +170,12 @@ func searchCities(w http.ResponseWriter, req *http.Request) {
 	for _, v := range *db.getCities() {
 		log.Println(v)
 		for _, n := range countriesList {
-			if v.Country != nil && v.Country.Name == n {
+			if v.getCountry().Name == CountryId(n) {
 				results[v.Name] = v
 			}
 		}
 		for _, n := range continentList {
-			if v.Country != nil && v.Country.Continent != nil && v.Country.Continent.Name == n {
+			if v.Country != nil && v.Country.Continent != nil && v.getContinent().Name == ContinentId(n) {
 				results[v.Name] = v
 			}
 		}
@@ -173,23 +185,28 @@ func searchCities(w http.ResponseWriter, req *http.Request) {
 	log.Println(results)
 }
 func getCountriesByContinent(w http.ResponseWriter, req *http.Request) {
+	results := make(Countries)
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	params := mux.Vars(req)
-	name := params[NAMEID]
+	name := ContinentId(params[NAMEID])
 	for _, v := range *db.getCountries() {
-		if v.Continent.Name == name {
-			log.Println(v)
+		continent := v.getContinent()
+		if continent.Name == name {
+			results[v.Name] = v
 		}
 	}
+	err := json.NewEncoder(w).Encode(results)
+	log.Println(err)
 }
 
 const (
+	// Paths
 	CITIES     string = "/cities"
 	COUNTRIES  string = "/countries"
 	CONTINENTS string = "/continents"
+	SEARCH     string = "/search"
 
 	// Serach terms
-	SEARCH               string = "/search"
 	COUNTRIESBYCONTINENT string = COUNTRIES + CONTINENTS
 	SEARCHCITIES         string = SEARCH + CITIES
 
@@ -201,10 +218,7 @@ const (
 	COUNTRIESID    string = "countries"
 	COUNTRIESPART  string = "{countries}"
 
-	// Literals
-	POST   string = "POST"
-	GET    string = "GET"
-	DELETE string = "DELETE"
+	LISTENINGPORT string = ":8181"
 )
 
 func getMemDataBaseV1() DataBaseI {
@@ -223,18 +237,17 @@ func main() {
 
 	db = NewDataBase(getMemDataBaseV1)
 
-	log.Println("Starting...")
 	router := mux.NewRouter()
-	router.HandleFunc(CITIES, createCity).Methods(POST)
-	router.HandleFunc(CITIES, getCities).Methods(GET)
-	router.HandleFunc(CITIES+NAMEPART, getCity).Methods(GET)
-	router.HandleFunc(CITIES+NAMEPART, deleteCity).Methods(DELETE)
-	router.HandleFunc(COUNTRIES, createCountry).Methods(POST)
-	router.HandleFunc(COUNTRIES+NAMEPART, getCountry).Methods(GET)
-	router.HandleFunc(COUNTRIES+NAMEPART, deleteCountry).Methods(DELETE)
-	router.HandleFunc(CONTINENTS, createContinent).Methods(POST)
-	router.HandleFunc(CONTINENTS+NAMEPART, getContinent).Methods(GET)
-	router.HandleFunc(CONTINENTS+NAMEPART, deleteContinent).Methods(DELETE)
+	router.HandleFunc(CITIES, createCity).Methods(http.MethodPost)
+	router.HandleFunc(CITIES, getCities)
+	router.HandleFunc(CITIES+NAMEPART, getCity)
+	router.HandleFunc(CITIES+NAMEPART, deleteCity).Methods(http.MethodDelete)
+	router.HandleFunc(COUNTRIES, createCountry).Methods(http.MethodPost)
+	router.HandleFunc(COUNTRIES+NAMEPART, getCountry)
+	router.HandleFunc(COUNTRIES+NAMEPART, deleteCountry).Methods(http.MethodDelete)
+	router.HandleFunc(CONTINENTS, createContinent).Methods(http.MethodPost)
+	router.HandleFunc(CONTINENTS+NAMEPART, getContinent)
+	router.HandleFunc(CONTINENTS+NAMEPART, deleteContinent).Methods(http.MethodDelete)
 
 	router.HandleFunc(COUNTRIESBYCONTINENT+NAMEPART, getCountriesByContinent)
 	router.HandleFunc(SEARCHCITIES, searchCities).Queries(CONTINENTSID, CONTINENTSPART, COUNTRIESID, COUNTRIESPART)
@@ -249,5 +262,6 @@ func main() {
 	})
 
 	// Listen and serve
-	log.Fatal(http.ListenAndServe(":8181", router))
+	log.Println("Listening port", LISTENINGPORT)
+	log.Fatal(http.ListenAndServe(LISTENINGPORT, router))
 }
