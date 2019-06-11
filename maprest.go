@@ -24,18 +24,16 @@ type Country struct {
 	Continent *Continent `json:"continent,omitempty"`
 }
 
-func (country Country) getContinent() Continent { return db.getContinent(country.Continent.Name) }
+func (country Country) getContinent() Continent { return dataBase.getContinent(country.Continent.Name) }
 
 type City struct {
 	Name    CityId   `json:"name,omitempty"`
 	Country *Country `json:"country,omitempty"`
 }
 
-func (city City) getCountry() Country { return db.getCountry(city.Country.Name) }
-func (city City) getContinent() Continent {
-	country := city.getCountry()
-	return country.getContinent()
-}
+func (city City) getCountry() Country { return dataBase.getCountry(city.Country.Name) }
+
+func (city City) getContinent() Continent { return city.getCountry().getContinent() }
 
 type DataBaseI interface {
 	getCity(CityId) City
@@ -57,7 +55,7 @@ type Continents map[ContinentId]Continent
 type Countries map[CountryId]Country
 
 type MemDataBaseImp struct {
-	info       string `default:"InMemory DataBase implementation"`
+	info       string `default:"In-Memory DataBase implementation"`
 	continents Continents
 	cities     Cities
 	countries  Countries
@@ -77,87 +75,89 @@ func (db *MemDataBaseImp) deleteCity(city CityId)                { delete(db.cit
 func (db *MemDataBaseImp) deleteContinent(continent ContinentId) { delete(db.continents, continent) }
 func (db *MemDataBaseImp) deleteCountry(country CountryId)       { delete(db.countries, country) }
 
-var db DataBaseI
+var dataBase DataBaseI
 
 func createCity(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	var city City
 	err := json.NewDecoder(req.Body).Decode(&city)
 	log.Println(err)
-	db.addCity(city)
-	log.Println("city", City{Name: "Test", Country: &Country{Name: "fi"}})
+	dataBase.addCity(city)
 	json.NewEncoder(os.Stdout).Encode(city)
 }
 
 func getCity(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
 	id := CityId(params[NAMEID])
-	city := db.getCity(id)
+	city := dataBase.getCity(id)
 	err := json.NewEncoder(w).Encode(city)
 	log.Println(err)
 }
 func getCities(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", r.Method, r.RequestURI)
+	fmt.Fprintf(os.Stdout, "%s %s\n", r.Method, r.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(db.getCities())
+	err := json.NewEncoder(w).Encode(dataBase.getCities())
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 func deleteCity(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	params := mux.Vars(req)
 	name := CityId(params[NAMEID])
-	db.deleteCity(name)
+	fmt.Fprintf(os.Stdout, "%s %s %s\n", req.Method, req.RequestURI, name)
+	dataBase.deleteCity(name)
 }
 func createCountry(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	var country Country
 	err := json.NewDecoder(req.Body).Decode(&country)
 	log.Println(err)
-	db.addCountry(country)
+	dataBase.addCountry(country)
 	json.NewEncoder(os.Stdout).Encode(country)
 }
 func getCountry(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
 	id := CountryId(params[NAMEID])
-	city := db.getCountry(id)
+	city := dataBase.getCountry(id)
 	err := json.NewEncoder(w).Encode(city)
 	log.Println(err)
 }
 func deleteCountry(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	params := mux.Vars(req)
 	id := CountryId(params[NAMEID])
-	db.deleteCountry(id)
+	dataBase.deleteCountry(id)
 }
 func createContinent(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	var continent Continent
 	err := json.NewDecoder(req.Body).Decode(&continent)
 	log.Println(err)
-	db.addContinent(continent)
+	dataBase.addContinent(continent)
 	json.NewEncoder(os.Stdout).Encode(continent)
 }
 func getContinent(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
 	id := ContinentId(params[NAMEID])
-	continent := db.getContinent(id)
+	continent := dataBase.getContinent(id)
 	err := json.NewEncoder(w).Encode(continent)
 	log.Println(err)
 }
 func deleteContinent(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	params := mux.Vars(req)
 	id := ContinentId(params[NAMEID])
-	db.deleteContinent(id)
+	dataBase.deleteContinent(id)
 }
 func searchCities(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(os.Stdout, "%s %s\n", req.Method, req.RequestURI)
 	results := make(Cities)
-	fmt.Fprintf(os.Stdout, "SE %s %s", req.Method, req.RequestURI)
 	w.Header().Set("Content-Type", "application/json")
 	params := mux.Vars(req)
 
@@ -167,7 +167,7 @@ func searchCities(w http.ResponseWriter, req *http.Request) {
 	countries := params[COUNTRIESID]
 	countriesList := strings.Split(countries, ",")
 	log.Println(countriesList)
-	for _, v := range *db.getCities() {
+	for _, v := range *dataBase.getCities() {
 		log.Println(v)
 		for _, n := range countriesList {
 			if v.getCountry().Name == CountryId(n) {
@@ -175,7 +175,7 @@ func searchCities(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		for _, n := range continentList {
-			if v.Country != nil && v.Country.Continent != nil && v.getContinent().Name == ContinentId(n) {
+			if v.getContinent().Name == ContinentId(n) {
 				results[v.Name] = v
 			}
 		}
@@ -189,7 +189,7 @@ func getCountriesByContinent(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(os.Stdout, "%s %s", req.Method, req.RequestURI)
 	params := mux.Vars(req)
 	name := ContinentId(params[NAMEID])
-	for _, v := range *db.getCountries() {
+	for _, v := range *dataBase.getCountries() {
 		continent := v.getContinent()
 		if continent.Name == name {
 			results[v.Name] = v
@@ -235,16 +235,18 @@ func NewDataBase(db func() DataBaseI) DataBaseI {
 
 func main() {
 
-	db = NewDataBase(getMemDataBaseV1)
+	dataBase = NewDataBase(getMemDataBaseV1)
 
 	router := mux.NewRouter()
 	router.HandleFunc(CITIES, createCity).Methods(http.MethodPost)
 	router.HandleFunc(CITIES, getCities)
 	router.HandleFunc(CITIES+NAMEPART, getCity)
 	router.HandleFunc(CITIES+NAMEPART, deleteCity).Methods(http.MethodDelete)
+
 	router.HandleFunc(COUNTRIES, createCountry).Methods(http.MethodPost)
-	router.HandleFunc(COUNTRIES+NAMEPART, getCountry)
+	router.HandleFunc(COUNTRIES+NAMEPART, getCountry).Methods(http.MethodGet)
 	router.HandleFunc(COUNTRIES+NAMEPART, deleteCountry).Methods(http.MethodDelete)
+
 	router.HandleFunc(CONTINENTS, createContinent).Methods(http.MethodPost)
 	router.HandleFunc(CONTINENTS+NAMEPART, getContinent)
 	router.HandleFunc(CONTINENTS+NAMEPART, deleteContinent).Methods(http.MethodDelete)
@@ -255,9 +257,9 @@ func main() {
 	// Index page
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "<html><ul>")
-		fmt.Fprintf(w, "<li><a href=%s>CITIES</a>", CITIES)
-		fmt.Fprintf(w, "<li><a href=%s>COUNTRIES</a>", COUNTRIES)
-		fmt.Fprintf(w, "<li><a href=%s>CONTINENTS</a>", CONTINENTS)
+		fmt.Fprintf(w, "<li><a href=%s>CITIES</a>\n", CITIES)
+		fmt.Fprintf(w, "<li><a href=%s>COUNTRIES</a>\n", COUNTRIES)
+		fmt.Fprintf(w, "<li><a href=%s>CONTINENTS</a>\n", CONTINENTS)
 		fmt.Fprintln(w, "</ul></html>")
 	})
 
